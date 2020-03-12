@@ -1,0 +1,11 @@
+3700send: 23:02:11.183960 [send data] 0 (1000)
+3700send: 23:02:11.184107 ABOUT TO SLEEP
+3700recv: 23:02:11.195243 [recv data] 0 (1000) ACCEPTED (in-order)
+3700recv: 23:02:11.195359 ABOUT TO SEND {"ack": 1000}
+3700send: 23:02:11.206765 [recv ack] 1000
+3700recv: 23:02:11.217134 [completed]
+Time elapsed: 117.605 ms
+Packets sent: 3
+Bytes sent: 1267
+Effective goodput: 68.024 Kb/s  (8.503 KB/s)
+Data match: Yes

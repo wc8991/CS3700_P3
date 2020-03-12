@@ -1,0 +1,53 @@
+3700send: 23:03:50.867042 [send data] 0 (1417)
+3700send: 23:03:50.867088 ABOUT TO SLEEP
+3700recv: 23:03:50.878823 [recv data] 0 (1417) ACCEPTED (in-order)
+3700recv: 23:03:50.879030 ABOUT TO SEND {"ack": 1417}
+3700send: 23:03:50.889526 [recv ack] 1417
+3700send: 23:03:50.889709 [send data] 1417 (1414)
+3700send: 23:03:50.889746 (seqn 2831)
+3700send: 23:03:50.889766 ABOUT TO SLEEP
+3700recv: 23:03:50.901511 [recv data] 1417 (1414) ACCEPTED (in-order)
+3700recv: 23:03:50.901654 ABOUT TO SEND {"ack": 2831}
+3700send: 23:03:50.913168 [recv ack] 2831
+3700send: 23:03:50.913502 [send data] 2831 (1414)
+3700send: 23:03:50.913562 (seqn 4245)
+3700send: 23:03:50.913649 ABOUT TO SLEEP
+3700recv: 23:03:50.925402 [recv data] 2831 (1414) ACCEPTED (in-order)
+3700recv: 23:03:50.925592 ABOUT TO SEND {"ack": 4245}
+3700send: 23:03:50.937258 [recv ack] 4245
+3700send: 23:03:50.937653 [send data] 4245 (1414)
+3700send: 23:03:50.937717 (seqn 5659)
+3700send: 23:03:50.937751 ABOUT TO SLEEP
+3700recv: 23:03:50.949564 [recv data] 4245 (1414) ACCEPTED (in-order)
+3700recv: 23:03:50.949772 ABOUT TO SEND {"ack": 5659}
+3700send: 23:03:50.960606 [recv ack] 5659
+3700send: 23:03:50.960932 [send data] 5659 (1414)
+3700send: 23:03:50.960999 (seqn 7073)
+3700send: 23:03:50.961037 ABOUT TO SLEEP
+3700recv: 23:03:50.972924 [recv data] 5659 (1414) ACCEPTED (in-order)
+3700recv: 23:03:50.973153 ABOUT TO SEND {"ack": 7073}
+3700send: 23:03:50.983738 [recv ack] 7073
+3700send: 23:03:50.984119 [send data] 7073 (1414)
+3700send: 23:03:50.984188 (seqn 8487)
+3700send: 23:03:50.984225 ABOUT TO SLEEP
+3700recv: 23:03:50.996019 [recv data] 7073 (1414) ACCEPTED (in-order)
+3700recv: 23:03:50.996346 ABOUT TO SEND {"ack": 8487}
+3700send: 23:03:51.006947 [recv ack] 8487
+3700send: 23:03:51.007281 [send data] 8487 (1414)
+3700send: 23:03:51.007419 (seqn 9901)
+3700send: 23:03:51.007469 ABOUT TO SLEEP
+3700recv: 23:03:51.018138 [recv data] 8487 (1414) ACCEPTED (in-order)
+3700recv: 23:03:51.018350 ABOUT TO SEND {"ack": 9901}
+3700send: 23:03:51.030027 [recv ack] 9901
+3700send: 23:03:51.030379 [send data] 9901 (99)
+3700send: 23:03:51.030446 (seqn 10000)
+3700send: 23:03:51.030481 ABOUT TO SLEEP
+3700recv: 23:03:51.040946 [recv data] 9901 (99) ACCEPTED (in-order)
+3700recv: 23:03:51.041169 ABOUT TO SEND {"ack": 10000}
+3700send: 23:03:51.052851 [recv ack] 10000
+3700recv: 23:03:51.065265 [completed]
+Time elapsed: 281.729 ms
+Packets sent: 17
+Bytes sent: 11501
+Effective goodput: 283.961 Kb/s  (35.495 KB/s)
+Data match: Yes

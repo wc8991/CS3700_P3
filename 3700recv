@@ -4,64 +4,111 @@ import sys
 import socket
 import datetime
 import json
+import bisect
 
-MSG_SIZE = 1500
-TIMEOUT = 30
+class Receiver:
 
-def log(string):
-  sys.stderr.write(datetime.datetime.now().strftime("%H:%M:%S.%f") + " " + string + "\n")
-  sys.stderr.flush()
+  def __init__(self):
+    self.msg_size = 1500
+    self.timeout = 30
+    self.packet_buffer = [] # Keeps track of all the unordered packets received
+    self.ordered_list = [] # Keeps track of how many packages we've correctly received in ordered
+    self.sequence_started = False  
+  
+  def log(self, string):
+    sys.stderr.write(datetime.datetime.now().strftime("%H:%M:%S.%f") + " " + string + "\n")
+    sys.stderr.flush()
+  
+  def is_message_complete(self):
+    return True
+  
+  # Helper to sort a list in place
+  def sorted_insert(self, list, packet):
+    bisect.insort(list, packet) 
 
-def main():
-  # Bind to localhost and an ephemeral port
-  udp_ip = "127.0.0.1"
-  udp_port = 0
+  # Ensures that a packet is only added to ordered_list when it is the next in line
+  def does_packet_follow_left_edge(self,packet):
+    return False
 
-  # Set up the socket
-  sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-  sock.bind((udp_ip, udp_port))
-  sock.settimeout(TIMEOUT)
+  # Adds packets to self.ordered_list from self.packet_buffer
+  # Removes packets from packet_buffer if they are in ordered_list
+  def coalesce(self):
+    for packet in self.packet_buffer:
+      if not self.does_packet_follow_left_edge(packet):
+        break
+      else:
+        self.sorted_insert(self.ordered_list,packet)
+        self.packet_buffer.remove(packet)
+    
+# Handles the packet_buffer list and decides when to ack and add to ordered_list
+  def handle_packet(self, packet):
+    self.sorted_insert(self.packet_buffer,packet)
+    if packet["sequence"] == 0:
+      self.sequence_started = True
+      self.sorted_insert(self.ordered_list,packet)
+    
+    if self.sequence_started:
+      self.coalesce()
 
-  # Get port we bound to
-  udp_port = sock.getsockname()[1]
-  log(f"[bound] {udp_port}")
 
-  # Now listen for packets
-  while True:
-    result = sock.recvfrom(MSG_SIZE)
+  def get_left_edge(self):
+    pass
 
-    # If nothing is ready, we hit the timeout
-    if result:
-      (data, addr) = result
-      data = data.decode('ascii')
+  def main(self):
+    # Bind to localhost and an ephemeral port
+    udp_ip = "127.0.0.1"
+    udp_port = 0
+  
+    # Set up the socket
+    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    sock.bind((udp_ip, udp_port))
+    sock.settimeout(self.timeout)
+  
+    # Get port we bound to
+    udp_port = sock.getsockname()[1]
+    self.log(f"[bound] {udp_port}")
+  
+    # Now listen for packets
+    while True:
+      result = sock.recvfrom(self.msg_size)
+  
+      # If nothing is ready, we hit the timeout
+      if result:
+        (data, addr) = result
+        data = data.decode('ascii')
+  
+        try:
+          decoded = json.loads(data)
+  
 
-      try:
-        decoded = json.loads(data)
-
-        # If the EOF flag is set, exit
-        if decoded['eof']:
-          log("[completed]")
-          sys.exit(0)
-
-        # If there is data, we accept it and print it out
-        if decoded['data']:
-          # If we receive data, we assume it's in-order
-          # You will need to do much more here
-          log(f"[recv data] {decoded['sequence']} ({len(decoded['data'])}) ACCEPTED (in-order)")
-          sys.stdout.write(decoded['data'])
-
-        # Send back an ack to the sender
-        msg = json.dumps({"ack": decoded['sequence'] + len(decoded['data'])})
-        log("ABOUT TO SEND " + msg)
-        if sock.sendto(msg.encode('ascii'), addr) < len(msg):
-          log("[error] unable to fully send packet")
-
-      except (ValueError, KeyError, TypeError) as exc:
-        log("[recv corrupt packet]")
-        raise exc
-    else:
-      log("[error] timeout")
-      sys.exit(-1)
-
+          # msg = {"sequence": seqn, "data": "", "ack": False, "eof": False}
+          # If the EOF flag is set, exit
+          if decoded['eof'] and self.is_message_complete():
+            #TODO SEND ACK
+            self.log("[completed]")
+            sys.exit(0)
+  
+          # If there is data, we accept it and print it out
+          if decoded['data']:
+            # If we receive data, we assume it's in-order
+            # You will need to do much more here
+            self.log(f"[recv data] {decoded['sequence']} ({len(decoded['data'])}) ACCEPTED (in-order)")
+            sys.stdout.write(decoded['data'])
+  
+          # Send back an ack to the sender
+          msg = json.dumps({"ack": decoded['sequence'] + len(decoded['data'])})
+          self.log("ABOUT TO SEND " + msg)
+          if sock.sendto(msg.encode('ascii'), addr) < len(msg):
+            self.log("[error] unable to fully send packet")
+  
+        except (ValueError, KeyError, TypeError) as exc:
+          self.log("[recv corrupt packet]")
+          raise exc
+      else:
+        self.log("[error] timeout")
+        sys.exit(-1)
+  
 if __name__ == '__main__':
-  main()
+  r = Receiver()
+  r.main()
+  

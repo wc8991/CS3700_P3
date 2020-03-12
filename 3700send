@@ -4,85 +4,98 @@ import sys
 import socket
 import datetime
 import json
+ 
 
-MSG_SIZE = 1500
-DATA_SIZE = 1472
-TIMEOUT = 30
-RTT = 0
+class Sender:
 
-def get_time_difference_miliseconds(datetime_object1, datetime_object2):
-  # https://stackoverflow.com/questions/1345827/how-do-i-find-the-time-difference-between-two-datetime-objects-in-python
-  difference = datetime_object2 - datetime_object1
-  return int(difference.total_seconds() * 1000)
+  def __init__(self):
+    self.msg_size = 1500
+    self.data_size = 1472
+    self.timeout = 30
+    self.rtt = 0.0
+    self.rtt_delta = 0.875 
+    self.rto = 2 * self.rtt
 
-def log(string):
-  sys.stderr.write(datetime.datetime.now().strftime("%H:%M:%S.%f") + " " + string + "\n")
-  sys.stderr.flush()
+  def calculate_rtt(self, new_rtt):
+    return float(self.rtt_delta * self.rtt) + float((1.0 - self.rtt_delta) * new_rtt)
 
-def send_next_packet(seqn, sock, dest):
-  msg = {"sequence": seqn, "data": "", "ack": False, "eof": False}
-  overhead = len(json.dumps(msg))
-  msg["data"] = sys.stdin.read(DATA_SIZE - overhead)
-  if len(msg["data"]) > 0:
-    assert (len(msg) <= DATA_SIZE), f"ERROR: Datagram is longer ({len(msg)}) than {DATA_SIZE} bytes!!!"
+  def get_time_difference_miliseconds(self,datetime_object1, datetime_object2):
+    # https://stackoverflow.com/questions/1345827/how-do-i-find-the-time-difference-between-two-datetime-objects-in-python
+    difference = datetime_object2 - datetime_object1
+    return float(difference.total_seconds() * 1000)
 
-    if sock.sendto(json.dumps(msg).encode('ascii'), dest) < len(msg):
-      log("[error] unable to fully send packet")
-    else:
-      log("[send data] " + str(seqn) + " (" + str(len(msg["data"])) + ")")
-    return seqn + len(msg["data"])
-  return seqn
+  def log(self,string):
+    sys.stderr.write(datetime.datetime.now().strftime("%H:%M:%S.%f") + " " + string + "\n")
+    sys.stderr.flush()
 
-def main():
-  # Bind to localhost and an ephemeral port
-  ip_port = sys.argv[1]
-  udp_ip = ip_port[0:ip_port.find(":")]
-  udp_port = int(ip_port[ip_port.find(":")+1:])
-  dest = (udp_ip, udp_port)
-  seqn = 0
+  def send_next_packet(self,seqn, sock, dest):
+    msg = {"sequence": seqn, "data": "", "ack": False, "eof": False}
+    overhead = len(json.dumps(msg))
+    msg["data"] = sys.stdin.read(self.data_size - overhead)
+    if len(msg["data"]) > 0:
+      assert (len(msg) <= self.data_size), f"ERROR: Datagram is longer ({len(msg)}) than {self.data_size} bytes!!!"
 
-  # Set up the socket
-  sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-  sock.settimeout(TIMEOUT)
+      if sock.sendto(json.dumps(msg).encode('ascii'), dest) < len(msg):
+        self.log("[error] unable to fully send packet")
+      else:
+        self.log("[send data] " + str(seqn) + " (" + str(len(msg["data"])) + ")")
+      return seqn + len(msg["data"])
+    return seqn
 
-  send_time = datetime.datetime.now()
-  # Send first packet
-  seqn = send_next_packet(seqn, sock, dest)
+  def main(self,):
+    # Bind to localhost and an ephemeral port
+    ip_port = sys.argv[1]
+    udp_ip = ip_port[0:ip_port.find(":")]
+    udp_port = int(ip_port[ip_port.find(":")+1:])
+    dest = (udp_ip, udp_port)
+    seqn = 0
 
-  # Now read in data, send packets
-  while True:
-    log("ABOUT TO SLEEP")
-    result = sock.recvfrom(MSG_SIZE)
+    # Set up the socket
+    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    sock.settimeout(self.timeout)
 
-    if result:
-      (data, _addr) = result
-      data = data.decode('ascii')
+    send_time = datetime.datetime.now()
+    # Send first packet
+    seqn = self.send_next_packet(seqn, sock, dest)
 
-      try:
-        decoded = json.loads(data)
+    # Now read in data, send packets
+    while True:
+      self.log("ABOUT TO SLEEP")
+      result = sock.recvfrom(self.msg_size)
 
-        # If there is an ack, send next packet
-        if decoded['ack'] == seqn:
-          ack_time =  datetime.datetime.now()
-          RTT = get_time_difference_miliseconds(send_time,ack_time)
-          log(f"[recv ack] {seqn}")
-          log(f"RTT is {RTT}")
+      if result:
+        (data, _addr) = result
+        data = data.decode('ascii')
 
-          # Try to send next packet; break if no more data
-          new_seq = send_next_packet(seqn, sock, dest)
-          if new_seq == seqn:
-            break
-          seqn = new_seq
-      except (ValueError, KeyError, TypeError):
-        log("[recv corrupt packet]")
-    else:
-      log("[error] timeout")
-      sys.exit(-1)
+        try:
+          decoded = json.loads(data)
 
-    log(f"(seqn {seqn})")
+          # If there is an ack, send next packet
+          if decoded['ack'] == seqn:
+            ack_time =  datetime.datetime.now()
+            new_rtt = self.get_time_difference_miliseconds(send_time,ack_time)
+                      
+            self.rtt = self.calculate_rtt(new_rtt)
 
-  sock.sendto(json.dumps({"eof": True, "data": "", "sequence": seqn, "ack": False}).encode('ascii'), dest)
-  sys.exit(0)
+            self.log(f"[recv ack] {seqn}")
+
+            send_time = datetime.datetime.now()
+            # Try to send next packet; break if no more data
+            new_seq = self.send_next_packet(seqn, sock, dest)
+            if new_seq == seqn:
+              break
+            seqn = new_seq
+        except (ValueError, KeyError, TypeError):
+          self.log("[recv corrupt packet]")
+      else:
+        self.log("[error] timeout")
+        sys.exit(-1)
+
+      self.log(f"(seqn {seqn})")
+
+    sock.sendto(json.dumps({"eof": True, "data": "", "sequence": seqn, "ack": False}).encode('ascii'), dest)
+    sys.exit(0)
 
 if __name__ == '__main__':
-  main()
+  s = Sender()
+  s.main()

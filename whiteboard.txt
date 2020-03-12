@@ -1,0 +1,51 @@
+
+
+Hello
+
+msg_len = 1
+
+Sender:
+[H] ->
+[e] X
+[l] ->
+Wait for ack
+------ RTT = Round trip Time
+RTO = rtt * 2
+if rto has passed:
+    resend_last_packages()
+
+Receive_ack() = {"left_edge": 1, "out_of_order_list": [l]}
+
+[e] ->
+
+[l] ->
+
+[o] ->
+wait_for_ack() 
+Receive_ack()
+send_next_packet()
+seq == new_seq
+sends => eof
+
+
+Receiver:
+buffer = [l]
+ordered_list = [H]
+Window = 3
+[H] <-
+handle_packet()
+[e] X
+[l] <-
+handle_packet()
+[H] <-
+handle_packet()
+send_ack() = {"left_edge": 1, "out_of_order_list": [l]}
+
+[e] <-
+handle_packet()
+[l] <-
+handle_packet()
+[o] <-
+handle_packet()
+send_ack = {"left_edge": 5, "out_of_order_list": []}
+
