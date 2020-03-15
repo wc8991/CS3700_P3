@@ -18,6 +18,7 @@ class Sender:
     self.rto = 2 * self.rtt
     self.ack_receive_time = -1
     self.packet_cache = []
+    self.timeout_timer = 0
 
   def calculate_rtt(self, new_rtt):
     return float(self.rtt_delta * self.rtt) + float((1.0 - self.rtt_delta) * new_rtt)
@@ -31,20 +32,38 @@ class Sender:
     sys.stderr.write(datetime.datetime.now().strftime("%H:%M:%S.%f") + " " + string + "\n")
     sys.stderr.flush()
 
+  def send_packet(self,sock,packet,dest):
+    seqn = packet["sequence"]
+    if sock.sendto(json.dumps(packet).encode('ascii'), dest) < len(packet):
+      self.log("[error] unable to fully send packet")
+    else:
+      self.log("[send data] " + str(seqn) + " (" + str(len(packet["data"])) + ")")
+
   def send_next_packet(self,seqn, sock, dest):
     msg = {"sequence": seqn, "data": "", "ack": False, "eof": False}
     overhead = len(json.dumps(msg))
     msg["data"] = sys.stdin.read(self.data_size - overhead)
     if len(msg["data"]) > 0:
       assert (len(msg) <= self.data_size), f"ERROR: Datagram is longer ({len(msg)}) than {self.data_size} bytes!!!"
+      self.send_packet(sock,msg,dest)
+      self.packet_cache.append(msg)
 
-      if sock.sendto(json.dumps(msg).encode('ascii'), dest) < len(msg):
-        self.log("[error] unable to fully send packet")
-      else:
-        self.packet_cache.append(msg)
-        self.log("[send data] " + str(seqn) + " (" + str(len(msg["data"])) + ")")
       return seqn + len(msg["data"])
     return seqn
+
+  # ACK looks like {"ack": sequence_number,
+  #                 "unordered_sent_packages": []}
+  def recognize_ack(self,ack):
+    for packet in self.packet_cache:
+      if packet["sequence"] < ack["ack"] or packet["sequence"] in ack["unordered_sent_packages"]:
+        self.packet_cache.remove(packet)
+      
+  def check_for_timeout(self):
+    time_now = datetime.datetime.now()
+    delta = time_now - self.timeout_timer
+    return delta.seconds > self.timeout
+
+
 
   def main(self,):
     # Bind to localhost and an ephemeral port
@@ -58,6 +77,7 @@ class Sender:
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     sock.settimeout(self.timeout)
     sock.setblocking(0)
+    self.timeout_timer = datetime.datetime.now()
 
     send_time = datetime.datetime.now()
     # Send first packet
@@ -65,8 +85,14 @@ class Sender:
 
     # Now read in data, send packets
     while True:
+
+      if self.check_for_timeout():
+        self.log("[error] timeout")
+        sys.exit(-1)
+
       self.log("ABOUT TO SLEEP")
       ready = select.select([sock], [], [], self.rto)
+      
       if ready[0]:
         result = sock.recvfrom(self.msg_size)
         if result:
@@ -78,6 +104,7 @@ class Sender:
 
             # If there is an ack, send next packet
             if decoded['ack'] == seqn:
+              self.recognize_ack(decoded)
               self.ack_receive_time = datetime.datetime.now()
               new_rtt = self.get_time_difference_miliseconds(send_time,self.ack_receive_time)
 
@@ -89,15 +116,18 @@ class Sender:
               # Try to send next packet; break if no more data
               new_seq = self.send_next_packet(seqn, sock, dest)
               if new_seq == seqn:
+                self.log("break here for no more data to read")
                 break
               seqn = new_seq
           except (ValueError, KeyError, TypeError):
             self.log("[recv corrupt packet]")
-        else: # We didn't get an ACK in enough time, resend everything in the cache
-          pass
-      else:
-        self.log("[error] timeout")
-        sys.exit(-1)
+      else: # We didn't get an ACK in enough time, resend everything in the cache
+        for packet in self.packet_cache:
+          self.send_packet(sock,packet,dest)
+        
+        if not self.packet_cache:
+          self.log("break here for no more data in the cache")
+          break
 
       self.log(f"(seqn {seqn})")
 
