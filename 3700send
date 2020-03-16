@@ -10,20 +10,31 @@ import select
 class Sender:
 
   def __init__(self):
-    self.msg_size = 1500
-    self.data_size = 1472
-    self.timeout = 30
-    self.rtt = 1.0
-    self.rtt_delta = 0.875 
-    self.rto = 2 * self.rtt
-    self.ack_receive_time = -1
-    self.packet_cache = []
-    self.timeout_timer = 0
-    self.packets_sent = 0
-    self.data_acked = 0
+
+    self.msg_size = 1500 # Message size to be sent
+    self.data_size = 1472 #Total size of the data that can be sent
+    self.timeout = 30 #In seconds 
+    
+    self.rtt = 1.0 #Round trip time
+    self.rto = 2 * self.rtt #Recovery time objective
+    self.ack_receive_time = -1 #datetime object when an ack is received
+    
+    self.packet_cache = [] #List of packets that are sent
+    
+    self.timeout_timer = 0 #datetime object that is used to timeout system if has run > 30seconds
+    
+    self.packets_sent = 0 #Used for debugging, counts how many packets sent total
+    
+    self.data_acked = 0 # Keeps track of the left edge that the receiver has acked
+
+    self.window_size = 3 # How many consecutive packets can be sent before we check for an ack
+    
+    self.is_all_data_read = False # If all data has been read from stdin
+    self.data_read = 0 # Keeps track how much data has been read from stdin
 
   def calculate_rtt(self, new_rtt):
-    return float(self.rtt_delta * self.rtt) + float((1.0 - self.rtt_delta) * new_rtt)
+    rtt_delta = 0.875  
+    return float(rtt_delta * self.rtt) + float((1.0 - rtt_delta) * new_rtt)
 
   def get_time_difference_miliseconds(self,datetime_object1, datetime_object2):
     # https://stackoverflow.com/questions/1345827/how-do-i-find-the-time-difference-between-two-datetime-objects-in-python
@@ -67,6 +78,42 @@ class Sender:
     delta = time_now - self.timeout_timer
     return delta.seconds > self.timeout
 
+  def update_rtt(self, send_time):
+    self.ack_receive_time = datetime.datetime.now()
+    new_rtt = self.get_time_difference_miliseconds(send_time,self.ack_receive_time)
+    self.rtt = self.calculate_rtt(new_rtt)
+    self.rto = self.rtt * 2
+    if self.rto > 10:
+      self.rto = 1
+
+  def send_packet_cache(self,sock,dest,num_to_send = 100000):
+    if num_to_send <= 0:
+      return False
+    else:
+      count = 0
+      for packet in self.packet_cache:
+        if count > num_to_send:
+          break
+        if self.data_acked <= packet["sequence"]:
+          self.send_packet(sock,packet,dest)
+          count += 1
+        else:
+          self.packet_cache.remove(packet)
+      return not self.packet_cache
+      
+  def send_window(self,sock,dest):
+    if self.is_all_data_read:
+      return self.send_packet_cache(sock,dest)
+    else:
+      for num_sent in range(0, self.window_size):
+        new_seq = self.send_next_packet(self.data_read, sock, dest)
+        if new_seq == self.data_read:
+          self.is_all_data_read = True
+          return self.send_packet_cache(sock,dest,self.window_size - num_sent)
+        else:
+          self.data_read = new_seq
+      
+      return True
 
 
   def main(self,):
@@ -84,14 +131,18 @@ class Sender:
     self.timeout_timer = datetime.datetime.now()
 
     send_time = datetime.datetime.now()
-    # Send first packet
-    seqn = self.send_next_packet(seqn, sock, dest)
+    
+    # Send first N packets
+    self.send_window(sock, dest)
     
     # Now read in data, send packets
     while True:
+
+      # TODO remove this is just for debugging
       if self.packets_sent > 100:
         sys.exit(0)
 
+      # Exits when reaches the timeout (30 secs)
       if self.check_for_timeout():
         self.log("[error] timeout")
         sys.exit(-1)
@@ -100,46 +151,40 @@ class Sender:
       self.log(f"rto = {self.rto}")
       ready = select.select([sock], [], [], self.rto)
       
+      # This means that there is an ack on the line
       if ready[0]:
+
         result = sock.recvfrom(self.msg_size)
+        
         if result:
           (data, _addr) = result
           data = data.decode('ascii')
 
           try:
             decoded = json.loads(data)
+            ack = decoded['ack']
+            self.recognize_ack(decoded)
+              
+            self.update_rtt(send_time)
 
-            # If there is an ack, send next packet
-            if decoded['ack'] == seqn:
-              self.recognize_ack(decoded)
-              self.ack_receive_time = datetime.datetime.now()
-              new_rtt = self.get_time_difference_miliseconds(send_time,self.ack_receive_time)
-
-              self.rtt = self.calculate_rtt(new_rtt)
-              self.rto = self.rtt * 2
-              if self.rto > 10:
-                self.rto = 1
-              self.log(f"[recv ack] {seqn}")
-
-              send_time = datetime.datetime.now()
-              # Try to send next packet; break if no more data
-              new_seq = self.send_next_packet(seqn, sock, dest)
-              if new_seq == seqn:
-                self.log("no more data to read")
-                break
-              seqn = new_seq
+            self.log(f"[recv ack] {ack}")
+            self.log(f"Data ACKED: {self.data_acked}")
+            send_time = datetime.datetime.now()
+            no_more_data = self.send_window(sock, dest)
+            if no_more_data:
+              self.log(f"NO MORE DATA!")
+              break
           except (ValueError, KeyError, TypeError):
             self.log("[recv corrupt packet]")
+            sys.exit(0)
       else: # We didn't get an ACK in enough time, resend everything in the cache
-        for packet in self.packet_cache:
-          if self.data_acked <= packet["sequence"]:
-            self.send_packet(sock,packet,dest)
-        
+        self.send_packet_cache(sock,dest)
+
         if not self.packet_cache:
           self.log("no more data in the cache")
           break
 
-      self.log(f"(seqn {seqn})")
+      self.log(f"(seqn {self.data_read})")
 
     sock.sendto(json.dumps({"eof": True, "data": "", "sequence": seqn, "ack": False}).encode('ascii'), dest)
     sys.exit(0)
