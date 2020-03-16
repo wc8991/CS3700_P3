@@ -113,6 +113,11 @@ class Receiver:
           if decoded['data']:
             if self.is_duplicate(decoded):
               self.log("IGNORED")
+              msg = json.dumps({"ack": self.get_left_edge(),
+                                "unordered_sent_packages": self.get_list_sequence(self.packet_buffer)})
+              self.log("ABOUT TO SEND " + msg)
+              if sock.sendto(msg.encode('ascii'), addr) < len(msg):
+                self.log("[error] unable to fully send packet")
               break
             
             self.packet_count += 1
@@ -128,7 +133,7 @@ class Receiver:
 
           # Send back an ack to the sender
           # if ordered_list % 3 = 0 
-          # TODO send only sequence numbers not dicts
+
           msg = json.dumps({"ack": self.get_left_edge(),
                             "unordered_sent_packages": self.get_list_sequence(self.packet_buffer)})
           self.log("ABOUT TO SEND " + msg)

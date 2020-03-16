@@ -13,12 +13,14 @@ class Sender:
     self.msg_size = 1500
     self.data_size = 1472
     self.timeout = 30
-    self.rtt = 0.0
+    self.rtt = 1.0
     self.rtt_delta = 0.875 
     self.rto = 2 * self.rtt
     self.ack_receive_time = -1
     self.packet_cache = []
     self.timeout_timer = 0
+    self.packets_sent = 0
+    self.data_acked = 0
 
   def calculate_rtt(self, new_rtt):
     return float(self.rtt_delta * self.rtt) + float((1.0 - self.rtt_delta) * new_rtt)
@@ -26,7 +28,7 @@ class Sender:
   def get_time_difference_miliseconds(self,datetime_object1, datetime_object2):
     # https://stackoverflow.com/questions/1345827/how-do-i-find-the-time-difference-between-two-datetime-objects-in-python
     difference = datetime_object2 - datetime_object1
-    return float(difference.total_seconds() * 1000)
+    return float(difference.total_seconds())
 
   def log(self,string):
     sys.stderr.write(datetime.datetime.now().strftime("%H:%M:%S.%f") + " " + string + "\n")
@@ -38,6 +40,7 @@ class Sender:
       self.log("[error] unable to fully send packet")
     else:
       self.log("[send data] " + str(seqn) + " (" + str(len(packet["data"])) + ")")
+      self.packets_sent += 1
 
   def send_next_packet(self,seqn, sock, dest):
     msg = {"sequence": seqn, "data": "", "ack": False, "eof": False}
@@ -57,6 +60,7 @@ class Sender:
     for packet in self.packet_cache:
       if packet["sequence"] < ack["ack"] or packet["sequence"] in ack["unordered_sent_packages"]:
         self.packet_cache.remove(packet)
+    self.data_acked = int(ack["ack"])
       
   def check_for_timeout(self):
     time_now = datetime.datetime.now()
@@ -82,15 +86,18 @@ class Sender:
     send_time = datetime.datetime.now()
     # Send first packet
     seqn = self.send_next_packet(seqn, sock, dest)
-
+    
     # Now read in data, send packets
     while True:
+      if self.packets_sent > 100:
+        sys.exit(0)
 
       if self.check_for_timeout():
         self.log("[error] timeout")
         sys.exit(-1)
 
       self.log("ABOUT TO SLEEP")
+      self.log(f"rto = {self.rto}")
       ready = select.select([sock], [], [], self.rto)
       
       if ready[0]:
@@ -109,24 +116,27 @@ class Sender:
               new_rtt = self.get_time_difference_miliseconds(send_time,self.ack_receive_time)
 
               self.rtt = self.calculate_rtt(new_rtt)
-
+              self.rto = self.rtt * 2
+              if self.rto > 10:
+                self.rto = 1
               self.log(f"[recv ack] {seqn}")
 
               send_time = datetime.datetime.now()
               # Try to send next packet; break if no more data
               new_seq = self.send_next_packet(seqn, sock, dest)
               if new_seq == seqn:
-                self.log("break here for no more data to read")
+                self.log("no more data to read")
                 break
               seqn = new_seq
           except (ValueError, KeyError, TypeError):
             self.log("[recv corrupt packet]")
       else: # We didn't get an ACK in enough time, resend everything in the cache
         for packet in self.packet_cache:
-          self.send_packet(sock,packet,dest)
+          if self.data_acked <= packet["sequence"]:
+            self.send_packet(sock,packet,dest)
         
         if not self.packet_cache:
-          self.log("break here for no more data in the cache")
+          self.log("no more data in the cache")
           break
 
       self.log(f"(seqn {seqn})")
