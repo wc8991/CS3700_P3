@@ -127,13 +127,13 @@ class Receiver:
             sys.stdout.write(decoded['data'])
 
           # Send back an ack to the sender
-          # if ordered_list % 3 = 0 
+          if self.ordered_list % 3 == 0: 
           # TODO send only sequence numbers not dicts
-          msg = json.dumps({"ack": self.get_left_edge(),
+            msg = json.dumps({"ack": self.get_left_edge(),
                             "unordered_sent_packages": self.get_list_sequence(self.packet_buffer)})
-          self.log("ABOUT TO SEND " + msg)
-          if sock.sendto(msg.encode('ascii'), addr) < len(msg):
-            self.log("[error] unable to fully send packet")
+            self.log("ABOUT TO SEND " + msg)
+            if sock.sendto(msg.encode('ascii'), addr) < len(msg):
+              self.log("[error] unable to fully send packet")
   
         except (ValueError, KeyError, TypeError) as exc:
           self.log("[recv corrupt packet]")
