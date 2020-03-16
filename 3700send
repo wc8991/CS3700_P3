@@ -15,7 +15,7 @@ class Sender:
     self.timeout = 30
     self.rtt = 0.0
     self.rtt_delta = 0.875 
-    self.rto = 2 * self.rtt
+    self.rto = None
     self.ack_receive_time = -1
     self.packet_cache = []
 
@@ -46,6 +46,14 @@ class Sender:
       return seqn + len(msg["data"])
     return seqn
 
+  def resend_cache(self):
+    send_time = datetime.datetime.now()
+    for msg in self.packet_cache:
+      if sock.sendto(json.dumps(msg).encode('ascii'), dest) < len(msg):
+        self.log("[error] unable to fully send packet")
+      else:
+        self.log("[send data] " + str(seqn) + " (" + str(len(msg["data"])) + ")")
+
   def main(self,):
     # Bind to localhost and an ephemeral port
     ip_port = sys.argv[1]
@@ -62,13 +70,19 @@ class Sender:
     send_time = datetime.datetime.now()
     # Send first packet
     seqn = self.send_next_packet(seqn, sock, dest)
+    seqn = self.send_next_packet(seqn, sock, dest)
+    seqn = self.send_next_packet(seqn, sock, dest)
 
     # Now read in data, send packets
     while True:
       self.log("ABOUT TO SLEEP")
-      ready = select.select([sock], [], [], self.rto)
-      if ready[0]:
+      if self.rto:
+        ready = select.select([sock], [], [], self.rto)
+        if ready[0]:
+          result = sock.recvfrom(self.msg_size)
+      else:
         result = sock.recvfrom(self.msg_size)
+
         if result:
           (data, _addr) = result
           data = data.decode('ascii')
@@ -82,11 +96,15 @@ class Sender:
               new_rtt = self.get_time_difference_miliseconds(send_time,self.ack_receive_time)
 
               self.rtt = self.calculate_rtt(new_rtt)
+              self.rto = self.rtt * 2
 
               self.log(f"[recv ack] {seqn}")
+              self.packet_cache = []
 
               send_time = datetime.datetime.now()
               # Try to send next packet; break if no more data
+              new_seq = self.send_next_packet(seqn, sock, dest)
+              new_seq = self.send_next_packet(seqn, sock, dest)
               new_seq = self.send_next_packet(seqn, sock, dest)
               if new_seq == seqn:
                 break
@@ -94,6 +112,7 @@ class Sender:
           except (ValueError, KeyError, TypeError):
             self.log("[recv corrupt packet]")
         else: # We didn't get an ACK in enough time, resend everything in the cache
+          resend_cache()
           pass
       else:
         self.log("[error] timeout")
