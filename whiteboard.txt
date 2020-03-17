@@ -49,3 +49,7 @@ handle_packet()
 handle_packet()
 send_ack = {"left_edge": 5, "out_of_order_list": []}
 
+H     decoded['sequence'] = 0
+E     decoded['sequence'] = 1
+L     decoded['sequence'] = 2
+ordered_list % 3 = 0
