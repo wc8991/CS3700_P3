@@ -49,7 +49,11 @@ handle_packet()
 handle_packet()
 send_ack = {"left_edge": 5, "out_of_order_list": []}
 
-H     decoded['sequence'] = 0
-E     decoded['sequence'] = 1
-L     decoded['sequence'] = 2
-ordered_list % 3 = 0
+CHANGE LOG 3/15:
+
+- in 3700send, changed rto to initalize as None. Updates when first rtt value is found.
+- Hopefully the above will fix the dropped packets, because now can receive first ack.
+- send_next_packet is now called three times in a row when called
+- This is for perfect case of when three packets can be sent in a row
+- cache now empties so that it can be used to resend 
+- resend_cache in the else case of results
