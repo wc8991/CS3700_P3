@@ -49,7 +49,6 @@ handle_packet()
 handle_packet()
 send_ack = {"left_edge": 5, "out_of_order_list": []}
 
-
 CHANGE LOG 3/15:
 
 - in 3700send, changed rto to initalize as None. Updates when first rtt value is found.
