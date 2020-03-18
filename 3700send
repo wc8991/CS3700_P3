@@ -29,6 +29,8 @@ class Sender:
 
     self.window_size = 30 # How many consecutive packets can be sent before we check for an ack
     
+    self.consecutive_repeats = 0
+
     self.is_all_data_read = False # If all data has been read from stdin
     self.data_read = 0 # Keeps track how much data has been read from stdin
 
@@ -69,7 +71,7 @@ class Sender:
   #                 "unordered_sent_packages": []}
   def recognize_ack(self,ack):
     for packet in self.packet_cache:
-      if packet["sequence"] < ack["ack"] or packet["sequence"] in ack["unordered_sent_packages"]:
+      if packet["sequence"] < ack["ack"] or int(packet["sequence"]) in ack["unordered_sent_packages"]:
         self.packet_cache.remove(packet)
     self.data_acked = int(ack["ack"])
       
@@ -144,10 +146,6 @@ class Sender:
       if not self.packet_cache and self.data_read == self.data_acked:
         break
 
-      # # TODO remove this is just for debugging
-      # if self.packets_sent > 1000:
-      #   sys.exit(0)
-
       # Exits when reaches the timeout (30 secs)
       if self.check_for_timeout():
         self.log("[error] timeout")
@@ -159,7 +157,7 @@ class Sender:
       
       # This means that there is an ack on the line
       if ready[0]:
-
+        self.consecutive_repeats = 0
         result = sock.recvfrom(self.msg_size)
         
         if result:
@@ -186,6 +184,9 @@ class Sender:
             sys.exit(0)
       else: # We didn't get an ACK in enough time, resend everything in the cache
         self.send_packet_cache(sock,dest)
+
+        if self.consecutive_repeats > self.window_size:
+          break
 
         if not self.packet_cache:
           self.log("no more data in the cache")

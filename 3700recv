@@ -29,6 +29,7 @@ class Receiver:
     self.ordered_list = [] # Keeps track of how many packages we've correctly received in ordered
     self.packet_count = 0
     self.window_size = 30
+    self.consecutive_ignores = 0
   
   def log(self, string):
     sys.stderr.write(datetime.datetime.now().strftime("%H:%M:%S.%f") + " " + string + "\n")
@@ -80,9 +81,9 @@ class Receiver:
 
   def is_ordered_packet(self, packet):
     if not self.ordered_list:
-      return int(packet["sequence"]) == 0
+      return int(packet["sequence"]) == 0 and not self.packet_buffer
     else: 
-      return self.ordered_list[-1].seqn == int(packet["sequence"]) and not self.packet_buffer
+      return self.ordered_list[-1].seqn == int(packet["sequence"])
 
   def check_packet_in_list(self,packet,list):
     for p in list:
@@ -99,6 +100,10 @@ class Receiver:
 
   def get_list_sequence(self, list):
     return [packet.seqn for packet in list]
+
+  def is_consecutive(self):
+    self.consecutive_ignores += 1
+    return self.consecutive_ignores > (self.window_size * 2)
 
   def main(self):
     # Bind to localhost and an ephemeral port
@@ -129,46 +134,50 @@ class Receiver:
           # msg = {"sequence": seqn, "data": "", "ack": False, "eof": False}
           # If the EOF flag is set, exit
           if decoded['eof'] and self.is_message_complete():
-            self.log("[completed]")
             msg = json.dumps({"ack": self.get_left_edge()})
             for _ in range(0,self.window_size):
               if sock.sendto(msg.encode('ascii'), addr) < len(msg):
                 self.log("[error] unable to fully send packet")
+            self.log("[completed]")
             sys.exit(0)
   
           # If there is data, we accept it and print it out
           if decoded['data']:
+            
             if self.is_duplicate(decoded):
+              if self.is_consecutive():
+                self.log("[completed]")
+                sys.exit(0)
+                
               self.log("IGNORED")
-              self.coalesce()
-              self.coalesce()
               msg = json.dumps({"ack": self.get_left_edge(),
-                                "unordered_sent_packages": []})
+                                "unordered_sent_packages": self.get_list_sequence(self.packet_buffer)})
               self.log("ABOUT TO SEND " + msg)
               if sock.sendto(msg.encode('ascii'), addr) < len(msg):
                 self.log("[error] unable to fully send packet")
               continue
             
+            self.consecutive_ignores = 0
+            
             self.packet_count += 1
             # If we receive data, we assume it's in-order
             
             self.handle_packet(decoded)
-            
+            self.coalesce()
             if self.is_ordered_packet(decoded):
               self.log(f"[recv data] {decoded['sequence']} ({len(decoded['data'])}) ACCEPTED (in-order)")
             else:
               self.log(f"[recv data] {decoded['sequence']} ({len(decoded['data'])}) ACCEPTED (out-of-order)")
-            
+
             sys.stdout.write(decoded['data'])
 
           # Send back an ack to the sender
           if self.packet_count % self.window_size == 0:
             msg = json.dumps({"ack": self.get_left_edge(),
-                              "unordered_sent_packages": []})
+                              "unordered_sent_packages": self.get_list_sequence(self.packet_buffer)})
             self.log("ABOUT TO SEND " + msg)
             if sock.sendto(msg.encode('ascii'), addr) < len(msg):
               self.log("[error] unable to fully send packet")
-            self.coalesce()
 
   
         except (ValueError, KeyError, TypeError) as exc:
