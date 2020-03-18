@@ -10,7 +10,6 @@ import select
 class Sender:
 
   def __init__(self):
-
     self.msg_size = 1500 # Message size to be sent
     self.data_size = 1472 #Total size of the data that can be sent
     self.timeout = 30 #In seconds 
@@ -120,7 +119,6 @@ class Sender:
       
       return True
 
-
   def main(self,):
     # Bind to localhost and an ephemeral port
     ip_port = sys.argv[1]
@@ -135,11 +133,10 @@ class Sender:
     sock.setblocking(0)
     self.timeout_timer = datetime.datetime.now()
 
-    send_time = datetime.datetime.now()
-    
+    send_time = datetime.datetime.now()    
     # Send first N packets
     self.send_window(sock, dest)
-    
+
     # Now read in data, send packets
     while True:
 
@@ -159,7 +156,6 @@ class Sender:
       if ready[0]:
         self.consecutive_repeats = 0
         result = sock.recvfrom(self.msg_size)
-        
         if result:
           (data, _addr) = result
           data = data.decode('ascii')

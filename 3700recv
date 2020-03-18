@@ -178,7 +178,6 @@ class Receiver:
             self.log("ABOUT TO SEND " + msg)
             if sock.sendto(msg.encode('ascii'), addr) < len(msg):
               self.log("[error] unable to fully send packet")
-
   
         except (ValueError, KeyError, TypeError) as exc:
           self.log("[recv corrupt packet]")
