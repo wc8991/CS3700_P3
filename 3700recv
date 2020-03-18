@@ -7,9 +7,10 @@ import json
 
 class Packet:
 
-  def __init__(self, seqn, len):
+  def __init__(self, seqn, len, data):
     self.seqn = int(seqn)
     self.len = int(len)
+    self.data = data
 
   def __eq__(self, other):
     if isinstance(other, Packet):
@@ -28,7 +29,8 @@ class Receiver:
     self.packet_buffer = [] # Keeps track of all the unordered packets received
     self.ordered_list = [] # Keeps track of how many packages we've correctly received in ordered
     self.packet_count = 0
-    self.window_size = 30
+    self.window_size = 300
+    self.ack_size = 5
     self.consecutive_ignores = 0
   
   def log(self, string):
@@ -63,12 +65,12 @@ class Receiver:
 
     
   # Handles the packet_buffer list and decides when to ack and add to ordered_list
-  def handle_packet(self, packet):
-    p = Packet(packet["sequence"],len(packet["data"]))
-    if self.get_left_edge() == p.seqn:
-      self.sorted_insert(self.ordered_list,p)
-    else:
-      self.sorted_insert(self.packet_buffer,p)
+  # def handle_packet(self, packet):
+    
+  #   if self.get_left_edge() == p.seqn:
+  #     self.sorted_insert(self.ordered_list,p)
+  #   else:
+  #     self.sorted_insert(self.packet_buffer,p)
 
   def get_left_edge(self):
     if not self.ordered_list:
@@ -81,9 +83,9 @@ class Receiver:
 
   def is_ordered_packet(self, packet):
     if not self.ordered_list:
-      return int(packet["sequence"]) == 0 and not self.packet_buffer
+      return int(packet["sequence"]) == 0
     else: 
-      return self.ordered_list[-1].seqn == int(packet["sequence"])
+      return self.get_left_edge() == int(packet["sequence"])
 
   def check_packet_in_list(self,packet,list):
     for p in list:
@@ -94,7 +96,7 @@ class Receiver:
 
 
   def is_duplicate(self, packet):
-    p = Packet(packet["sequence"],len(packet["data"]))
+    p = Packet(packet["sequence"],len(packet["data"]), packet["data"])
     return self.check_packet_in_list(p,self.packet_buffer) or \
            self.check_packet_in_list(p,self.ordered_list)
 
@@ -104,6 +106,11 @@ class Receiver:
   def is_consecutive(self):
     self.consecutive_ignores += 1
     return self.consecutive_ignores > (self.window_size * 2)
+
+  def write_out(self):
+    for packet in self.ordered_list:
+      sys.stdout.write(packet.data)
+
 
   def main(self):
     # Bind to localhost and an ephemeral port
@@ -138,41 +145,42 @@ class Receiver:
             for _ in range(0,self.window_size):
               if sock.sendto(msg.encode('ascii'), addr) < len(msg):
                 self.log("[error] unable to fully send packet")
+            self.write_out()
             self.log("[completed]")
             sys.exit(0)
   
           # If there is data, we accept it and print it out
           if decoded['data']:
-            
+          
             if self.is_duplicate(decoded):
               if self.is_consecutive():
+                self.write_out()
                 self.log("[completed]")
                 sys.exit(0)
-                
-              self.log("IGNORED")
-              msg = json.dumps({"ack": self.get_left_edge(),
-                                "unordered_sent_packages": self.get_list_sequence(self.packet_buffer)})
-              self.log("ABOUT TO SEND " + msg)
-              if sock.sendto(msg.encode('ascii'), addr) < len(msg):
-                self.log("[error] unable to fully send packet")
-              continue
+              else:
+                msg = json.dumps({"ack": self.get_left_edge(),
+                              "unordered_sent_packages": self.get_list_sequence(self.packet_buffer)})
+                if sock.sendto(msg.encode('ascii'), addr) < len(msg):
+                  self.log("[error] unable to fully send packet")
+                self.log("IGNORED")
+                continue
             
             self.consecutive_ignores = 0
-            
             self.packet_count += 1
-            # If we receive data, we assume it's in-order
-            
-            self.handle_packet(decoded)
-            self.coalesce()
+
+            #handle the packet received
+            p = Packet(decoded["sequence"],len(decoded["data"]),decoded["data"])
             if self.is_ordered_packet(decoded):
+              self.sorted_insert(self.ordered_list,p)
               self.log(f"[recv data] {decoded['sequence']} ({len(decoded['data'])}) ACCEPTED (in-order)")
             else:
+              self.sorted_insert(self.packet_buffer,p)
               self.log(f"[recv data] {decoded['sequence']} ({len(decoded['data'])}) ACCEPTED (out-of-order)")
 
-            sys.stdout.write(decoded['data'])
+            self.coalesce()
 
           # Send back an ack to the sender
-          if self.packet_count % self.window_size == 0:
+          if self.packet_count % self.ack_size == 0:
             msg = json.dumps({"ack": self.get_left_edge(),
                               "unordered_sent_packages": self.get_list_sequence(self.packet_buffer)})
             self.log("ABOUT TO SEND " + msg)

@@ -27,7 +27,7 @@ class Sender:
     
     self.data_acked = 0 # Keeps track of the left edge that the receiver has acked
 
-    self.window_size = 30 # How many consecutive packets can be sent before we check for an ack
+    self.window_size = 300 # How many consecutive packets can be sent before we check for an ack
     
     self.consecutive_repeats = 0
 
@@ -172,7 +172,6 @@ class Sender:
             self.update_rtt(send_time)
 
             self.log(f"[recv ack] {ack}")
-            self.log(f"Data ACKED: {self.data_acked}")
             send_time = datetime.datetime.now()
             
             no_more_data = self.send_window(sock, dest)

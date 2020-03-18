@@ -1,53 +1,81 @@
-3700send: 23:03:50.867042 [send data] 0 (1417)
-3700send: 23:03:50.867088 ABOUT TO SLEEP
-3700recv: 23:03:50.878823 [recv data] 0 (1417) ACCEPTED (in-order)
-3700recv: 23:03:50.879030 ABOUT TO SEND {"ack": 1417}
-3700send: 23:03:50.889526 [recv ack] 1417
-3700send: 23:03:50.889709 [send data] 1417 (1414)
-3700send: 23:03:50.889746 (seqn 2831)
-3700send: 23:03:50.889766 ABOUT TO SLEEP
-3700recv: 23:03:50.901511 [recv data] 1417 (1414) ACCEPTED (in-order)
-3700recv: 23:03:50.901654 ABOUT TO SEND {"ack": 2831}
-3700send: 23:03:50.913168 [recv ack] 2831
-3700send: 23:03:50.913502 [send data] 2831 (1414)
-3700send: 23:03:50.913562 (seqn 4245)
-3700send: 23:03:50.913649 ABOUT TO SLEEP
-3700recv: 23:03:50.925402 [recv data] 2831 (1414) ACCEPTED (in-order)
-3700recv: 23:03:50.925592 ABOUT TO SEND {"ack": 4245}
-3700send: 23:03:50.937258 [recv ack] 4245
-3700send: 23:03:50.937653 [send data] 4245 (1414)
-3700send: 23:03:50.937717 (seqn 5659)
-3700send: 23:03:50.937751 ABOUT TO SLEEP
-3700recv: 23:03:50.949564 [recv data] 4245 (1414) ACCEPTED (in-order)
-3700recv: 23:03:50.949772 ABOUT TO SEND {"ack": 5659}
-3700send: 23:03:50.960606 [recv ack] 5659
-3700send: 23:03:50.960932 [send data] 5659 (1414)
-3700send: 23:03:50.960999 (seqn 7073)
-3700send: 23:03:50.961037 ABOUT TO SLEEP
-3700recv: 23:03:50.972924 [recv data] 5659 (1414) ACCEPTED (in-order)
-3700recv: 23:03:50.973153 ABOUT TO SEND {"ack": 7073}
-3700send: 23:03:50.983738 [recv ack] 7073
-3700send: 23:03:50.984119 [send data] 7073 (1414)
-3700send: 23:03:50.984188 (seqn 8487)
-3700send: 23:03:50.984225 ABOUT TO SLEEP
-3700recv: 23:03:50.996019 [recv data] 7073 (1414) ACCEPTED (in-order)
-3700recv: 23:03:50.996346 ABOUT TO SEND {"ack": 8487}
-3700send: 23:03:51.006947 [recv ack] 8487
-3700send: 23:03:51.007281 [send data] 8487 (1414)
-3700send: 23:03:51.007419 (seqn 9901)
-3700send: 23:03:51.007469 ABOUT TO SLEEP
-3700recv: 23:03:51.018138 [recv data] 8487 (1414) ACCEPTED (in-order)
-3700recv: 23:03:51.018350 ABOUT TO SEND {"ack": 9901}
-3700send: 23:03:51.030027 [recv ack] 9901
-3700send: 23:03:51.030379 [send data] 9901 (99)
-3700send: 23:03:51.030446 (seqn 10000)
-3700send: 23:03:51.030481 ABOUT TO SLEEP
-3700recv: 23:03:51.040946 [recv data] 9901 (99) ACCEPTED (in-order)
-3700recv: 23:03:51.041169 ABOUT TO SEND {"ack": 10000}
-3700send: 23:03:51.052851 [recv ack] 10000
-3700recv: 23:03:51.065265 [completed]
-Time elapsed: 281.729 ms
-Packets sent: 17
-Bytes sent: 11501
-Effective goodput: 283.961 Kb/s  (35.495 KB/s)
-Data match: Yes
+[vagrant@localhost vagrant]$ ./run --size medium --printlog
+3700send: 01:21:23.899057 [send data] 0 (1431)
+3700send: 01:21:23.899103 (seqn 0)
+3700send: 01:21:23.899148 [send data] 1431 (1428)
+3700send: 01:21:23.899164 (seqn 1431)
+3700send: 01:21:23.899199 [send data] 2859 (1428)
+3700send: 01:21:23.899213 (seqn 2859)
+3700send: 01:21:23.899247 [send data] 4287 (1428)
+3700send: 01:21:23.899261 (seqn 4287)
+3700send: 01:21:23.899293 [send data] 5715 (1428)
+3700send: 01:21:23.899305 (seqn 5715)
+3700send: 01:21:23.899348 [send data] 7143 (1428)
+3700send: 01:21:23.899361 (seqn 7143)
+3700send: 01:21:23.899396 [send data] 8571 (1428)
+3700send: 01:21:23.899409 (seqn 8571)
+3700send: 01:21:23.899442 [send data] 9999 (1)
+3700send: 01:21:23.899454 (seqn 9999)
+3700send: 01:21:23.899492 [send data] 0 (1431)
+3700send: 01:21:23.899519 [send data] 1431 (1428)
+3700send: 01:21:23.899547 [send data] 2859 (1428)
+3700send: 01:21:23.899575 [send data] 4287 (1428)
+3700send: 01:21:23.899600 [send data] 5715 (1428)
+3700send: 01:21:23.899626 [send data] 7143 (1428)
+3700send: 01:21:23.899652 [send data] 8571 (1428)
+3700send: 01:21:23.899673 [send data] 9999 (1)
+3700send: 01:21:23.899687 ABOUT TO SLEEP
+3700send: 01:21:23.899707 rto = 2.0
+3700recv: 01:21:23.899881 [recv data] 0 (1431) ACCEPTED (in-order)
+3700recv: 01:21:23.899957 [recv data] 1431 (1428) ACCEPTED (in-order)
+3700recv: 01:21:23.900005 [recv data] 2859 (1428) ACCEPTED (in-order)
+3700recv: 01:21:23.900053 [recv data] 4287 (1428) ACCEPTED (in-order)
+3700recv: 01:21:23.900096 [recv data] 8571 (1428) ACCEPTED (out-of-order)
+3700recv: 01:21:23.900132 IGNORED
+3700recv: 01:21:23.900178 ABOUT TO SEND {"ack": 5715, "unordered_sent_packages": [8571]}
+3700recv: 01:21:23.900244 [recv data] 7143 (1428) ACCEPTED (out-of-order)
+3700send: 01:21:23.900432 [recv ack] 5715
+3700send: 01:21:23.900453 Data ACKED: 5715
+3700send: 01:21:23.900498 [send data] 5715 (1428)
+3700send: 01:21:23.900533 [send data] 7143 (1428)
+3700send: 01:21:23.900558 [send data] 9999 (1)
+3700send: 01:21:23.900572 ABOUT TO SLEEP
+3700send: 01:21:23.900585 rto = 1.75037
+3700recv: 01:21:23.900675 [recv data] 5715 (1428) ACCEPTED (out-of-order)
+3700recv: 01:21:23.911283 IGNORED
+3700recv: 01:21:23.911382 ABOUT TO SEND {"ack": 9999, "unordered_sent_packages": []}
+3700recv: 01:21:23.912541 IGNORED
+3700recv: 01:21:23.912595 ABOUT TO SEND {"ack": 9999, "unordered_sent_packages": []}
+3700recv: 01:21:23.912689 [recv data] 9999 (1) ACCEPTED (in-order)
+3700recv: 01:21:23.914199 IGNORED
+3700recv: 01:21:23.914301 ABOUT TO SEND {"ack": 10000, "unordered_sent_packages": []}
+3700recv: 01:21:23.915741 IGNORED
+3700recv: 01:21:23.915805 ABOUT TO SEND {"ack": 10000, "unordered_sent_packages": []}
+3700send: 01:21:23.915991 [recv ack] 10000
+3700send: 01:21:23.916039 Data ACKED: 10000
+3700send: 01:21:23.916069 ABOUT TO SLEEP
+3700send: 01:21:23.916093 rto = 1.53545
+3700recv: 01:21:23.917227 IGNORED
+3700recv: 01:21:23.917287 ABOUT TO SEND {"ack": 10000, "unordered_sent_packages": []}
+3700recv: 01:21:23.917394 IGNORED
+3700recv: 01:21:23.917438 ABOUT TO SEND {"ack": 10000, "unordered_sent_packages": []}
+3700send: 01:21:23.921958 [recv ack] 9999
+3700send: 01:21:23.922024 Data ACKED: 9999
+3700send: 01:21:23.922114 [send data] 9999 (1)
+3700send: 01:21:23.922148 ABOUT TO SLEEP
+3700send: 01:21:23.922175 rto = 1.344987
+3700send: 01:21:23.922876 [recv ack] 9999
+3700send: 01:21:23.922911 Data ACKED: 9999
+3700send: 01:21:23.922974 [send data] 9999 (1)
+3700send: 01:21:23.923003 ABOUT TO SLEEP
+3700send: 01:21:23.923027 rto = 1.1770678749999999
+3700send: 01:21:23.924837 [recv ack] 10000
+3700send: 01:21:23.924906 Data ACKED: 10000
+3700send: 01:21:23.924934 NO MORE DATA!
+3700send: 01:21:23.925018 ABOUT TO SLEEP
+3700send: 01:21:23.925051 rto = 1.0304041406249997
+3700send: 01:21:23.927772 [completed]
+3700recv: 01:21:23.935373 IGNORED
+3700recv: 01:21:23.935465 ABOUT TO SEND {"ack": 10000, "unordered_sent_packages": []}
+3700recv: 01:21:23.935551 IGNORED
+3700recv: 01:21:23.935584 ABOUT TO SEND {"ack": 10000, "unordered_sent_packages": []}
+3700recv: 01:21:23.935841 [completed]
